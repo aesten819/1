@@ -86,6 +86,7 @@ def scrape_consensus(code: str) -> dict:
     }
 
     # --- 증권사별 목표주가 (jsonPath3) ---
+    broker_counted = False
     broker_data = _get_json(f"/SVO2/json/data/01_06/03_A{code}.json")
     if broker_data and "comp" in broker_data:
         items = broker_data["comp"]
