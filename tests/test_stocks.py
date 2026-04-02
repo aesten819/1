@@ -1,6 +1,6 @@
 import pandas as pd
 import pytest
-from stocks import search_stocks, load_stocks
+from stocks import search_stocks
 
 def test_search_returns_matching_stocks():
     # 실제 CSV가 없으면 임시 DataFrame으로 테스트

@@ -3,6 +3,7 @@ import pandas as pd
 from pykrx import stock as krx
 
 DATA_PATH = "data/stocks.csv"
+MAX_SEARCH_RESULTS = 10
 
 
 def _today_str() -> str:
@@ -12,21 +13,25 @@ def _today_str() -> str:
 
 def download_stocks() -> pd.DataFrame:
     """KRX 전체 종목 목록 다운로드 후 data/stocks.csv 저장."""
-    date_str = _today_str()
-    tickers_kospi = krx.get_market_ticker_list(date_str, market="KOSPI")
-    tickers_kosdaq = krx.get_market_ticker_list(date_str, market="KOSDAQ")
+    try:
+        date_str = _today_str()
+        tickers_kospi = krx.get_market_ticker_list(date_str, market="KOSPI")
+        tickers_kosdaq = krx.get_market_ticker_list(date_str, market="KOSDAQ")
 
-    all_tickers = tickers_kospi + tickers_kosdaq
+        all_tickers = tickers_kospi + tickers_kosdaq
 
-    rows = []
-    for code in all_tickers:
-        name = krx.get_market_ticker_name(code)
-        rows.append({"code": code, "name": name})
+        rows = []
+        for code in all_tickers:
+            name = krx.get_market_ticker_name(code)
+            rows.append({"code": code, "name": name})
 
-    df = pd.DataFrame(rows, columns=["code", "name"])
-    os.makedirs("data", exist_ok=True)
-    df.to_csv(DATA_PATH, index=False, encoding="utf-8-sig")
-    return df
+        df = pd.DataFrame(rows, columns=["code", "name"])
+        os.makedirs("data", exist_ok=True)
+        df.to_csv(DATA_PATH, index=False, encoding="utf-8-sig")
+        return df
+    except Exception as e:
+        print(f"[KRX download error] {e}")
+        return pd.DataFrame(columns=["code", "name"])
 
 
 def load_stocks() -> pd.DataFrame:
@@ -47,5 +52,5 @@ def search_stocks(query: str, df: pd.DataFrame | None = None) -> list[dict]:
         df = load_stocks()
     if df.empty or "name" not in df.columns:
         return []
-    matched = df[df["name"].str.contains(query, na=False)]
-    return matched.head(10)[["code", "name"]].to_dict(orient="records")
+    matched = df[df["name"].str.contains(query, na=False, regex=False)]
+    return matched.head(MAX_SEARCH_RESULTS)[["code", "name"]].to_dict(orient="records")
