@@ -9,7 +9,9 @@ FnGuide 컨센서스 및 예상 실적 스크래퍼.
   - /SVO2/json/data/01_06/01_{code}_A_D.json : 연간 컨센서스 실적
 """
 import re
+import json
 import requests
+from collections import defaultdict
 
 BASE = "https://comp.fnguide.com"
 
@@ -38,16 +40,18 @@ def _get_json(path: str) -> dict | list | None:
         text = resp.text.lstrip("\ufeff").strip()
         if not text or text.startswith("<"):
             return None
-        import json
         return json.loads(text)
-    except Exception:
+    except Exception as e:
+        print(f"[FnGuide warning] {e}")
         return None
 
 
 def _clean_num(text: str) -> int | None:
-    """'256,720' or '256,720원' → 256720"""
-    digits = re.sub(r"[^\d]", "", str(text))
-    return int(digits) if digits else None
+    """'256,720' or '256,720원' → 256720; '-100' → -100"""
+    s = str(text).strip()
+    sign = -1 if s.startswith("-") else 1
+    digits = re.sub(r"[^\d]", "", s)
+    return sign * int(digits) if digits else None
 
 
 def _clean_float(text: str) -> float | None:
@@ -89,7 +93,6 @@ def scrape_consensus(code: str) -> dict:
             result["consensus"]["target_price"] = _clean_num(items[0].get("AVG_PRC", ""))
 
             # 월별 추세: EST_DT 기준 월별 평균 목표주가
-            from collections import defaultdict
             monthly: dict[str, list[int]] = defaultdict(list)
             for item in items:
                 est_dt = item.get("EST_DT", "")   # "YYYY/MM/DD"
@@ -116,6 +119,15 @@ def scrape_consensus(code: str) -> dict:
                 elif cd in _RECOM_SELL:
                     result["consensus"]["sell"] += 1
 
+            # Track if broker table was populated
+            broker_counted = bool(
+                result["consensus"]["buy"] or
+                result["consensus"]["hold"] or
+                result["consensus"]["sell"]
+            )
+    else:
+        broker_counted = False
+
     # --- 리포트별 투자의견 (jsonPath4) ---
     # 더 풍부한 RECOMMEND 텍스트 필드로 재집계 (broker 집계가 비어 있으면 대체)
     report_data = _get_json(f"/SVO2/json/data/01_06/04_A{code}.json")
@@ -127,7 +139,7 @@ def scrape_consensus(code: str) -> dict:
             current_price = _clean_num(r_items[0].get("CLS_PRC", ""))
 
             # 투자의견 집계 (broker 테이블이 비어 있을 경우 대체)
-            if result["consensus"]["buy"] == 0 and result["consensus"]["hold"] == 0:
+            if not broker_counted:
                 for item in r_items:
                     rec = item.get("RECOMMEND", "").strip().upper()
                     if rec in {r.upper() for r in _RECOM_BUY}:
