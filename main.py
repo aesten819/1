@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -7,15 +8,17 @@ from cache import Cache
 from scraper.fnguide import scrape_consensus, scrape_earnings
 from scraper.wisereport import scrape_brokers
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 app = FastAPI()
 cache = Cache()
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
 
 
 @app.get("/")
 def root():
-    return FileResponse("static/index.html")
+    return FileResponse(os.path.join(BASE_DIR, "static", "index.html"))
 
 
 @app.get("/api/search")
@@ -40,11 +43,13 @@ def api_consensus(code: str, refresh: bool = False):
     trend = []
     earnings = []
     brokers = []
+    current_price = None
 
     try:
         fn = scrape_consensus(code)
         consensus_data = fn["consensus"]
         trend = fn["trend"]
+        current_price = fn.get("current_price")
     except Exception as e:
         print(f"[FnGuide consensus error] {code}: {e}")
 
@@ -60,12 +65,14 @@ def api_consensus(code: str, refresh: bool = False):
 
     result = {
         "name": name,
-        "current_price": None,
+        "current_price": current_price,
         "consensus": consensus_data,
         "brokers": brokers,
         "trend": trend,
         "earnings": earnings,
     }
 
-    cache.set(code, result)
+    # Only cache if at least some data was retrieved
+    if consensus_data.get("target_price") or brokers or earnings:
+        cache.set(code, result)
     return result

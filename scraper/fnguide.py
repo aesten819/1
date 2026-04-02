@@ -82,6 +82,7 @@ def scrape_consensus(code: str) -> dict:
             "sell": 0,
         },
         "trend": [],
+        "current_price": None,
     }
 
     # --- 증권사별 목표주가 (jsonPath3) ---
@@ -153,6 +154,7 @@ def scrape_consensus(code: str) -> dict:
     tp = result["consensus"]["target_price"]
     if tp and current_price and current_price > 0:
         result["consensus"]["upside_pct"] = round((tp - current_price) / current_price * 100, 2)
+    result["current_price"] = current_price
 
     # --- 전체 투자의견 결정 ---
     total = (
