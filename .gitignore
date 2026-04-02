@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+cache.db
+.venv/
+venv/
+*.egg-info/
+dist/
+.DS_Store
+data/stocks.csv
