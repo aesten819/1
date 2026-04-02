@@ -22,8 +22,10 @@ OPINION_MAP = {
 }
 
 
-def _normalize_opinion(raw: str) -> str:
-    return OPINION_MAP.get(raw.strip().lower(), raw.strip())
+def _normalize_opinion(raw) -> str:
+    if not raw:
+        return ""
+    return OPINION_MAP.get(str(raw).strip().lower(), str(raw).strip())
 
 
 def scrape_brokers(code: str) -> list[dict]:
