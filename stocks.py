@@ -1,33 +1,29 @@
+import io
 import os
+import requests
 import pandas as pd
-from pykrx import stock as krx
 
 DATA_PATH = "data/stocks.csv"
 MAX_SEARCH_RESULTS = 10
 
 
-def _today_str() -> str:
-    from datetime import date
-    return date.today().strftime("%Y%m%d")
-
-
 def download_stocks() -> pd.DataFrame:
-    """KRX 전체 종목 목록 다운로드 후 data/stocks.csv 저장."""
+    """kind.krx.co.kr에서 전체 상장 종목 목록 다운로드 후 data/stocks.csv 저장."""
     try:
-        date_str = _today_str()
-        tickers_kospi = krx.get_market_ticker_list(date_str, market="KOSPI")
-        tickers_kosdaq = krx.get_market_ticker_list(date_str, market="KOSDAQ")
-
-        all_tickers = tickers_kospi + tickers_kosdaq
-
-        rows = []
-        for code in all_tickers:
-            name = krx.get_market_ticker_name(code)
-            rows.append({"code": code, "name": name})
-
-        df = pd.DataFrame(rows, columns=["code", "name"])
+        headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
+        resp = requests.get(
+            "https://kind.krx.co.kr/corpgeneral/corpList.do",
+            params={"method": "download", "searchType": "13"},
+            headers=headers,
+            timeout=15,
+        )
+        resp.raise_for_status()
+        raw = pd.read_html(io.BytesIO(resp.content), encoding="euc-kr", header=0)[0]
+        df = raw[["종목코드", "회사명"]].rename(columns={"종목코드": "code", "회사명": "name"})
+        df["code"] = df["code"].astype(str).str.zfill(6)
         os.makedirs("data", exist_ok=True)
         df.to_csv(DATA_PATH, index=False, encoding="utf-8-sig")
+        print(f"[KRX] {len(df)}개 종목 다운로드 완료")
         return df
     except Exception as e:
         print(f"[KRX download error] {e}")
