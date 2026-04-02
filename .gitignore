@@ -8,4 +8,4 @@ venv/
 *.egg-info/
 dist/
 .DS_Store
-data/stocks.csv
+
