@@ -48,5 +48,5 @@ def search_stocks(query: str, df: pd.DataFrame | None = None) -> list[dict]:
         df = load_stocks()
     if df.empty or "name" not in df.columns:
         return []
-    matched = df[df["name"].str.contains(query, na=False, regex=False)]
+    matched = df[df["name"].str.contains(query, na=False, regex=False, case=False)]
     return matched.head(MAX_SEARCH_RESULTS)[["code", "name"]].to_dict(orient="records")
