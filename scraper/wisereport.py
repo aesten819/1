@@ -45,10 +45,17 @@ def scrape_brokers(code: str) -> list[dict]:
         "term_typ": 2,
     }
 
-    resp = requests.post(ajax_url, headers=headers, data=payload, timeout=15)
-    resp.raise_for_status()
+    try:
+        resp = requests.post(ajax_url, headers=headers, data=payload, timeout=15)
+        resp.raise_for_status()
+        json_data = resp.json()
+    except (ValueError, requests.exceptions.JSONDecodeError) as e:
+        print(f"[WiseReport warning] Invalid JSON response for code {code}: {e}")
+        return []
+    except Exception as e:
+        print(f"[WiseReport warning] {e}")
+        return []
 
-    json_data = resp.json()
     rows = json_data.get("data") or []
 
     brokers = []
